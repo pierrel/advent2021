@@ -2,6 +2,10 @@
   (:require [advent.utils :as utils]
             [clojure.string :as string]))
 
+(def init-pos
+  {:depth 0
+   :horiz 0})
+
 (defn parse-move
   "Returns a tuple of the `movement` as 
    [:direction count]"
@@ -20,14 +24,14 @@
 
 (comment
   ;; Part 1
-  (let [movements (advent.utils/file-to-seq "input/day2.txt")
-        changes (map move-to-change
-                     (map parse-move movements))
+  (let [changes (->> (utils/file-to-seq "input/day2.txt")
+                     (map parse-move)
+                     (map move-to-change))
         updated-pos (reduce (fn [current [dir change]]
                               (update current
                                       dir
                                       +
                                       change))
-                            {:depth 0 :horiz 0}
+                            init-pos
                             changes)]
     (apply * (vals updated-pos))))
