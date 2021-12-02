@@ -1,24 +1,33 @@
 (ns advent.main)
 
-(comment
-;; day 1 1
-  (let [reader (clojure.java.io/reader "input/day1_1.txt")
-        comp-nums (map #(Integer/parseInt %) (line-seq reader))
-        nums (drop 1 comp-nums)
-        to-compare (partition 2 
-                              (interleave nums comp-nums))
+(defn num-seq
+  "Returns a lazy sequence of integers from `filename`,
+   a file of newline-separated numbers."
+  [filename]
+  (let [reader (clojure.java.io/reader filename)]
+    (map #(Integer/parseInt %)
+         (line-seq reader))))
+
+(defn increases
+  "Returns the number of ordered, pairwise increases between numbers in `nums`"
+  [nums]
+  (let [main-nums (drop 1 nums)
+        to-compare (partition 2
+                              (interleave main-nums nums))
         increases (filter (partial apply >) to-compare)]
-    (count increases))) 
+    (count increases)))
 
 (comment
-;; day 1 2
-  (let [reader (clojure.java.io/reader "input/day1_1.txt")
-        comp-a (map #(Integer/parseInt %) (line-seq reader))
-        comp-b (drop 1 comp-a)
-        comp-c (drop 1 comp-b)
-        comp-d (drop 1 comp-c)
-        nums (drop 1 comp-nums)
-        to-compare (partition 2
-                              (interleave nums comp-nums))
-        increases (filter (partial apply >) to-compare)]
-    (count increases))) 
+  ;; day 1 1
+  (increases (num-seq "input/day1_1.txt"))
+
+  ;; day 1 2
+  (let [nums (num-seq "input/day1_1.txt")
+        starts (map #(drop % nums)
+                    (range 3))
+        triples (partition 3
+                           (apply interleave starts))
+        triple-sums (map (partial apply +) triples)]
+    (increases triple-sums)))
+
+   
