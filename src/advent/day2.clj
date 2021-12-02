@@ -4,7 +4,8 @@
 
 (def init-pos
   {:depth 0
-   :horiz 0})
+   :horiz 0
+   :aim 0})
 
 (defn parse-move
   "Returns a tuple of the `movement` as 
@@ -15,23 +16,22 @@
      (Integer/parseInt str-count)]))
 
 (defn move-to-change
-  "Returns a tuple of movement as change to either :horiz or :depth"
+  "Returns a map of movement as change to either :horiz or :depth"
   [[dir count]]
   (case dir
-    :forward [:horiz count]
-    :down [:depth count]
-    :up [:depth (* -1 count)]))
+    :forward {:horiz count}
+    :down {:depth count}
+    :up {:depth (* -1 count)}))
 
 (comment
   ;; Part 1
   (let [changes (->> (utils/file-to-seq "input/day2.txt")
                      (map parse-move)
                      (map move-to-change))
-        updated-pos (reduce (fn [current [dir change]]
-                              (update current
-                                      dir
-                                      +
-                                      change))
+        updated-pos (reduce (fn [current change]
+                              (merge-with +
+                                          current
+                                          change))
                             init-pos
                             changes)]
     (apply * (vals updated-pos))))
