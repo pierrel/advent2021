@@ -17,16 +17,57 @@
           {}
           seq))
 
-(defn key-of-opt-val
- "Returns the key of the optimal value wrt opt-fun of map m" 
-  [m opt-fun]
-  (key (apply opt-fun val m)))
+(defn bin-string-seq-to-int [s]
+  (Integer/parseInt (string/join s) 2))
+
+(defn keys-of-optim-vals [optim-fn occurrences]
+  (let [optim-val (apply optim-fn (vals occurrences))]
+    (map first
+         (filter (fn [[_ v]]
+                   (= v optim-val))
+                 occurrences))))
+
+(defn choose-optm [occurrences-map optim-fn default]
+  (let [keys (keys-of-optim-vals optim-fn occurrences-map)]
+    (if (= 1 (count keys))
+      (first keys)
+      default)))
 
 (comment
-  (let [diags (map vector-bits (utils/file-to-seq "input/day3.txt"))
-        cols (partition (count diags)
-                        (apply interleave diags))
-        col-occurrences (map occurrences-in cols)
-        maxs-mins [(map #(key (apply max-key val %)) col-occurrences) ;; there's a better way
-                   (map #(key (apply min-key val %)) col-occurrences)]]
-    (apply * (map #(Integer/parseInt (string/join %) 2) maxs-mins))))
+  ;; Part 2
+  (let [diags (->> (utils/file-to-seq "input/day3.txt")
+                   (map vector-bits))
+        final-pos (count (first diags))
+        readings (map (fn [[comp default]]
+                        (loop [remaining diags
+                               pos 0]
+                          (if (or (=  1 (count remaining))
+                                  (= pos final-pos))
+                            (first remaining)
+                            (let [slice          (map #(nth % pos)
+                                                      remaining)
+                                  occurrences    (occurrences-in slice)
+                                  optm-occurrence (choose-optm occurrences
+                                                               comp
+                                                               default)]
+                              (recur (filter #(= optm-occurrence (nth % pos))
+                                             remaining)
+                                     (inc pos))))))
+                      [[max "1"]
+                       [min "0"]])
+        readings-ints (map bin-string-seq-to-int
+                           readings)]
+    (apply * readings-ints))
+
+   ;; Part 1
+  (let [diags (map vector-bits (utils/file-to-seq "input/day3.txt"))]
+    (apply * (map bin-string-seq-to-int
+                  (let [cols (partition (count diags)
+                                        (apply interleave diags))
+                        col-occurrences (map occurrences-in cols)]
+                    (map (fn [optim-fn]
+                           (map (fn [occurrences]
+                                  (first (keys-of-optim-vals optim-fn
+                                                             occurrences)))
+                                col-occurrences))
+                         [max min]))))))
