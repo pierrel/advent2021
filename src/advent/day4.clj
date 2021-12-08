@@ -66,7 +66,33 @@
           (map (partial draw-on-board (first draws))
                boards)))
 
+(defn board-code [board]
+  (apply + (->> (flatten board)
+                (filter (complement :marked?))
+                (map :elem)
+                (map #(Integer/parseInt %)))))
+
 (comment
+  ;; part 2
+   (let [seq-draw-winners
+         (loop [bingo (file-to-bingo "input/day4.txt")
+                draw-winners []]
+           (if (-> bingo :draws empty?)
+             draw-winners
+             (let [new-bingo (draw bingo)
+                   boards (:boards new-bingo)
+                   winners (filter win? boards)]
+               (if (empty? winners)
+                 (recur new-bingo draw-winners)
+                 (recur (Bingo. (:draws new-bingo)
+                                (filter (complement win?)
+                                        (:boards new-bingo)))
+                        (conj draw-winners
+                              [(-> bingo :draws first)
+                               winners]))))))]
+     (let [[draw boards] (last seq-draw-winners)]
+       (* (Integer/parseInt draw)
+          (-> boards first board-code))))
 
 ;; part 1
   (let [bingo (file-to-bingo "input/day4.txt")
@@ -78,7 +104,4 @@
                                            (-> cur-bingo :draws first))))
         winning-board (first (filter win? (:boards final-bingo)))]
     (* (Integer/parseInt last-draw)
-       (apply + (->> (flatten winning-board)
-                     (filter (complement :marked?))
-                     (map :elem)
-                     (map #(Integer/parseInt %)))))))
+       (board-code winning-board))))
