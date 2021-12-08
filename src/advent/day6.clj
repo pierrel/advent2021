@@ -19,20 +19,19 @@
           lanternfish))
 
 (defn advance-map [fish-count]
-  (let [before-inc (->> fish-count
-                        (map (fn [[fish count]]
-                               [(advance fish) count]))
-                        (into {}))]
-    (reduce (fn [acc [fish count]]
-          (merge-with +
-                      acc
-                      (if (vector? fish)
-                        (into {}
-                              (map #(vector % count)
-                                   fish))
-                        {fish count})))
-            {}
-            before-inc)))
+  (->> fish-count
+       (map (fn [[fish count]]
+              [(advance fish) count]))
+       (into {})
+       (reduce (fn [acc [fish count]]
+                 (merge-with +
+                             acc
+                             (if (vector? fish)
+                               (into {}
+                                     (map #(vector % count)
+                                          fish))
+                               {fish count})))
+               {})))
 
 (comment
 ;; part 2
