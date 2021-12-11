@@ -45,28 +45,42 @@
                                 row))
                  display)))
 
-(show-signal "a" display)
-
 (defn show-signals [signals display]
   (reduce (fn [new-display signal]
             (show-signal signal new-display))
           display
           signals))
 
-(defn number-to-signals [n]
-  (as-> (case n
-         0 "abcefg"
-         1 "cf"
-         2 "acdeg"
-         3 "acdfg"
-         4 "bcdf"
-         5 "abdfg"
-         6 "abdefg"
-         7 "acf"
-         8 "abcdefg"
-         9 "abcdfg") s
-       (clojure.string/split s #"")))
+(def number-signals-map
+  (->> {0 "abcefg"
+        1 "cf"
+        2 "acdeg"
+        3 "acdfg"
+        4 "bcdf"
+        5 "abdfg"
+        6 "abdefg"
+        7 "acf"
+        8 "abcdefg"
+        9 "abcdfg"}
+       (map (fn [[num signals-str]]
+              [num (as-> signals-str x
+                     (clojure.string/split x #"")
+                     (set x))]))
+       (into {})))
 
+(def signals-number-map
+  (->> number-signals-map
+       (map reverse)
+       (map #(apply vector %))
+       (into {})))
+
+(defn number-to-signals [n]
+  (get number-signals-map n))
+
+(defn signals-to-number [signals]
+  (->> signals
+       set
+       (get signals-number-map)))
 
 (defn show-number [n display]
   (->> display
@@ -78,23 +92,58 @@
        (clojure.string/join "\n")
        println))
 
+(defn to-note [line]
+  (as-> line v
+    (clojure.string/split v #"\|")
+    (map clojure.string/trim v)
+    (map (fn [s]
+           (clojure.string/split s #" "))
+         v)
+    (map (fn [part]
+           (map (fn [str]
+                  (clojure.string/split str #""))
+                part))
+         v)
+    (Note. (first v)
+           (second v))))
+
 (defn to-notes [filename]
   (->> filename
        utils/file-to-seq
-       (map #(as-> % v
-               (clojure.string/split v #"\|")
-               (map clojure.string/trim v)
-               (map (fn [s]
-                      (clojure.string/split s #" "))
-                    v)
-               (map (fn [part]
-                      (map (fn [str]
-                             (clojure.string/split str #""))
-                           part))
-                    v)))
-       (map #(Note. (first %) (last %)))))
+       (map to-note)))
 
 (comment
+
+;; part 1
+  (let [uniques-count (->> number-signals-map
+                           (map (fn [[num signals]]
+                                  [#{num} (count signals)]))
+                           (map reverse)
+                           (map #(apply (partial assoc nil) %))
+                           (reduce (partial merge-with clojure.set/union) {})
+                           (filter (fn [[_ numbers]]
+                                     (= 1 (count numbers))))
+                           (map first)
+                           set)] ;; they give this to you already but whatever
+    (->> "input/day8.txt"
+         utils/file-to-seq
+         (reduce (fn [total newline]
+                   (+ total
+                      (->> newline
+                           to-note
+                           :output
+                           (map count)
+                           (map uniques-count)
+                           (filter (complement nil?))
+                           count)))
+                 0)))
+
+    ;; for more fun
+  (as-> [1 3 3 7] v
+    (map number-to-signals v)
+    (map #(show-signals % display) v)
+    (map print-display v))
+
 ;; for fun
   (->> "input/day8test.txt"
        to-notes
@@ -102,5 +151,5 @@
        first
        (map (fn [signals]
               (print-display (show-signals signals display))
-              (println)))))
-
+              (println))))
+  )
