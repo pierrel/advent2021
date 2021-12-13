@@ -125,6 +125,7 @@
        (map to-note)))
 
 (defn signals-number-remap
+"Super ugly - takes an original map and a note and converts it into the new number map"
   [prev-signals-number-map note]
  (let [count-to-unique (->> prev-signals-number-map
                             (map (fn [[signals num]]
@@ -137,16 +138,15 @@
                                  (map #(vector (set %)
                                                (->> %
                                                     count
-                                                    count-to-unique))))
+                                                    count-to-unique)))
+                                 (into {}))
        signals-to-number (->> signals-to-possibles
-                                (filter (fn [[_ numbers]]
-                                          (= 1 (count numbers))))
-                                (map (fn [[signals numbers]]
-                                       [signals (first numbers)]))
-                                (into {}))
+                              (filter (fn [[_ numbers]]
+                                        (= 1 (count numbers))))
+                              (map (fn [[signals numbers]]
+                                     [signals (first numbers)]))
+                              (into {}))
        number-to-signals (clojure.set/map-invert signals-to-number)
-       prev-map-pairwise-diffs (filter #(= 1 (count (second %)))
-                                       (pairwise-diffs (clojure.set/map-invert prev-signals-number-map)))
        three (->> signals-to-possibles
                   (filter #(= #{3 2 5} (second %)))
                   (map first)
@@ -160,7 +160,7 @@
                  (map first)
                  flatten
                  (filter #(not= three %))
-                 (filter #(= 3 
+                 (filter #(= 3
                              (count (clojure.set/intersection % (get number-to-signals 4)))))
                  first)
        two (->> signals-to-possibles
@@ -169,10 +169,33 @@
                 flatten
                 (filter #(not= five %))
                 (filter #(not= three %))
-                first)]
-    [two
-     three
-     five]))
+                first)
+       six (->> signals-to-possibles
+                (filter #((second %) 6))
+                (map first)
+                (filter #(= 1 (count (clojure.set/intersection % (get number-to-signals 1)))))
+                first)
+       zero (->> signals-to-possibles
+                 (filter #((second %) 0))
+                 (map first)
+                 flatten
+                 (filter #(not= six %))
+                 (filter #(= 4 (count (clojure.set/intersection % three))))
+                 first)
+       nine (->> signals-to-possibles
+                 (filter #((second %) 9))
+                 (map first)
+                 flatten
+                 (filter #(not= six %))
+                 (filter #(not= zero %))
+                 first)]
+   (merge signals-to-number
+          {nine 9
+           six 6
+           three 3
+           five 5
+           zero 0
+           two 2})))
 
 (comment
   (clojure.pprint/pprint
@@ -184,53 +207,24 @@
          to-note)))
   )
 
-(defn new-signals-number-map
-  [old-signals-number-map note]
-  (let [count-to-unique (->> old-signals-number-map
-                             (map (fn [[signals num]]
-                                    [#{num} (count signals)]))
-                             (map reverse)
-                             (map #(apply (partial assoc nil) %))
-                             (reduce (partial merge-with clojure.set/union) {})) 
-        signals-to-possibles (->> note
-                                  :unique-signals
-                                  (map #(vector (set %)
-                                                (->> %
-                                                     count
-                                                     count-to-unique))))
-        sequences-to-number (->> signals-to-possibles 
-                                 (filter (fn [[_ numbers]]
-                                           (>= 1 (count numbers))))
-                                 (map (fn [[signals numbers]]
-                                        [signals (first numbers)]))
-                                 (into {}))]
-    [(filter #(= 1 (count (second %))) 
-             (pairwise-diffs (clojure.set/map-invert old-signals-number-map)))
-     (->> signals-to-possibles
-          (filter (comp sequences-to-number first))
-          (map reverse)
-          (map (fn [[nums signals]]
-                 [(first nums) signals]))
-          (into {})
-          pairwise-diffs)]))
-
-(comment
-  (clojure.pprint/pprint
-   (new-signals-number-map
-    signals-number-map
-    (->> "input/day8test.txt"
-         utils/file-to-seq
-         first
-         to-note)))
-  )
-
 (comment
 ;; part 2
-  (let [uniques-count
-        note (->> "input/day8.txt"
-                  utils/file-to-seq
-                  first
-                  to-note)] note)
+  (->> "input/day8.txt"
+       utils/file-to-seq
+       (map to-note)
+       (reduce (fn [acc note]
+                 (let [mapping (signals-number-remap signals-number-map note)
+                       output (->> note
+                                   :output
+                                   (map set)
+                                   (map mapping)
+                                   reverse
+                                   (map-indexed (fn [i num]
+                                                  (* num
+                                                     (apply * (repeat i 10)))))
+                                   (reduce +))]
+                   (+ output acc)))
+               0))
 
 ;; part 1
   (let [uniques-count (->> number-signals-map
@@ -269,4 +263,5 @@
        first
        (map (fn [signals]
               (print-display (show-signals signals display))
-              (println)))))
+              (println))))
+  )
