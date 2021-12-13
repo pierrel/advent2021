@@ -1,7 +1,7 @@
 (ns advent.day8
   (:require [advent.utils :as utils]))
 
-(defrecord Note [signal output])
+(defrecord Note [unique-signals output])
 
 (def display
   (repeat 7
@@ -68,6 +68,18 @@
                      (set x))]))
        (into {})))
 
+(defn pairwise-diffs [number-signals-map]
+  (->> number-signals-map
+       (map (fn [[num1 signals1]]
+              (map (fn [[num2 signals2]]
+                     [(set [num1 num2])
+                      (apply clojure.set/difference (sort-by count > [signals1 signals2]))])
+                   number-signals-map)))
+       (reduce concat [])
+       (reduce (fn [acc [pair diff-signals]]
+                 (assoc acc pair diff-signals))
+               {})))
+
 (def signals-number-map
   (->> number-signals-map
        (map reverse)
@@ -112,7 +124,113 @@
        utils/file-to-seq
        (map to-note)))
 
+(defn signals-number-remap
+  [prev-signals-number-map note]
+ (let [count-to-unique (->> prev-signals-number-map
+                            (map (fn [[signals num]]
+                                   [#{num} (count signals)]))
+                            (map reverse)
+                            (map #(apply (partial assoc nil) %))
+                            (reduce (partial merge-with clojure.set/union) {}))
+       signals-to-possibles (->> note
+                                 :unique-signals
+                                 (map #(vector (set %)
+                                               (->> %
+                                                    count
+                                                    count-to-unique))))
+       signals-to-number (->> signals-to-possibles
+                                (filter (fn [[_ numbers]]
+                                          (= 1 (count numbers))))
+                                (map (fn [[signals numbers]]
+                                       [signals (first numbers)]))
+                                (into {}))
+       number-to-signals (clojure.set/map-invert signals-to-number)
+       prev-map-pairwise-diffs (filter #(= 1 (count (second %)))
+                                       (pairwise-diffs (clojure.set/map-invert prev-signals-number-map)))
+       three (->> signals-to-possibles
+                  (filter #(= #{3 2 5} (second %)))
+                  (map first)
+                  flatten
+                  (filter #(= 2
+                              (count (clojure.set/intersection %
+                                                               (get number-to-signals 1)))))
+                  first)
+       five (->> signals-to-possibles
+                 (filter #((second %) 5))
+                 (map first)
+                 flatten
+                 (filter #(not= three %))
+                 (filter #(= 3 
+                             (count (clojure.set/intersection % (get number-to-signals 4)))))
+                 first)
+       two (->> signals-to-possibles
+                (filter #((second %) 2))
+                (map first)
+                flatten
+                (filter #(not= five %))
+                (filter #(not= three %))
+                first)]
+    [two
+     three
+     five]))
+
 (comment
+  (clojure.pprint/pprint
+   (signals-number-remap
+    signals-number-map
+    (->> "input/day8test.txt"
+         utils/file-to-seq
+         first
+         to-note)))
+  )
+
+(defn new-signals-number-map
+  [old-signals-number-map note]
+  (let [count-to-unique (->> old-signals-number-map
+                             (map (fn [[signals num]]
+                                    [#{num} (count signals)]))
+                             (map reverse)
+                             (map #(apply (partial assoc nil) %))
+                             (reduce (partial merge-with clojure.set/union) {})) 
+        signals-to-possibles (->> note
+                                  :unique-signals
+                                  (map #(vector (set %)
+                                                (->> %
+                                                     count
+                                                     count-to-unique))))
+        sequences-to-number (->> signals-to-possibles 
+                                 (filter (fn [[_ numbers]]
+                                           (>= 1 (count numbers))))
+                                 (map (fn [[signals numbers]]
+                                        [signals (first numbers)]))
+                                 (into {}))]
+    [(filter #(= 1 (count (second %))) 
+             (pairwise-diffs (clojure.set/map-invert old-signals-number-map)))
+     (->> signals-to-possibles
+          (filter (comp sequences-to-number first))
+          (map reverse)
+          (map (fn [[nums signals]]
+                 [(first nums) signals]))
+          (into {})
+          pairwise-diffs)]))
+
+(comment
+  (clojure.pprint/pprint
+   (new-signals-number-map
+    signals-number-map
+    (->> "input/day8test.txt"
+         utils/file-to-seq
+         first
+         to-note)))
+  )
+
+(comment
+;; part 2
+  (let [uniques-count
+        note (->> "input/day8.txt"
+                  utils/file-to-seq
+                  first
+                  to-note)] note)
 
 ;; part 1
   (let [uniques-count (->> number-signals-map
@@ -151,5 +269,4 @@
        first
        (map (fn [signals]
               (print-display (show-signals signals display))
-              (println))))
-  )
+              (println)))))
