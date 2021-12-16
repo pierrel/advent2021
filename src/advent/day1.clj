@@ -1,4 +1,4 @@
-(ns advent.main)
+(ns advent.day1)
 
 (defn num-seq
   "Returns a lazy sequence of integers from `filename`,
@@ -18,10 +18,10 @@
     (count increases)))
 
 (comment
-  ;; day 1 1
+  ;; part 1
   (increases (num-seq "input/day1_1.txt"))
 
-  ;; day 1 2
+  ;; part 2
   (let [nums (num-seq "input/day1_1.txt")
         starts (map #(drop % nums)
                     (range 3))
