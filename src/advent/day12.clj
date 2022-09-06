@@ -2,6 +2,11 @@
   (:require [advent.utils :as utils]
             [clojure.set :as s]))
 
+;; Seems that part 2 is causing memory issues.
+;; IDEAS
+;;; 1. Remove some of the set operations
+;;; 2. Remove forbidden paths at next-steps-in-path
+
 (defn input-to-graph [input-file]
   (->> input-file
        utils/file-to-seq
@@ -52,15 +57,7 @@
 (comment
   (node-counts (list "A" "b" "A" "end")))
 
-
-(defn path-has-multiple? [path no-multiples]
-  (let [mult-set (set no-multiples)
-        counts (node-counts path)]
-    (some (fn [no-multiple]
-            (< 1 (get counts no-multiple 0)))
-          no-multiples)))
-
-(defn path-has-multiple-forbidden? [path]
+(defn path-violates-count-rules-v1? [path]
   (->> path
        node-counts
        (filter (fn [[node count]]
@@ -68,22 +65,17 @@
        (map first)
        (some (partial re-matches #".*[a-z].*"))))
 
-(comment
-  (path-has-multiple-forbidden? '("A" "b" "c" "A")))
+(defn path-violates-count-rules-v2? [path]
+  (< 1 (->> path
+            node-counts
+            (filter (fn [[node count]]
+                      (re-matches #".*[a-z].*" node)))
+            (filter (fn [[node count]]
+                      (< 1 count)))
+            count)))
 
 (comment
-  (path-has-multiple? (list "A" "b" "b" "end")
-                      (list "A" "b")))
-
-(defn paths-without-multiple [paths no-multiples]
-  (filter #(not (path-has-multiple? % no-multiples))
-          paths))
-
-(comment
-  (paths-without-multiple (list '("A" "b" "end")
-                                '("A" "c" "A" "b" "end")
-                                '("A" "b" "A" "b" "end"))
-                          (list "b")))
+  (path-violates-count-rules-v2? '("A" "b" "c" "A" "c" "c")))
 
 (defn all-paths [graph start end]
   (loop [paths #{(list end)}]
@@ -98,7 +90,7 @@
                 (map (partial next-steps-in-path graph) ps)
                 (map set ps)
                 (reduce s/union #{} ps)
-                (filter (complement path-has-multiple-forbidden?)
+                (filter (complement path-violates-count-rules-v2?)
                         ps)
                 (set ps))]
           (if (empty? (s/difference new-paths
