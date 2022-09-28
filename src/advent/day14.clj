@@ -103,23 +103,28 @@
          starters)))
 
 (defn until-cycle [col]
-  (loop [rem col
+  (loop [cur (first col)
+         rem (rest col)
          uncycled []
          lookup {}]
-    (let [cur (first rem)
-          maybe-cycled (conj uncycled cur)]
+    (let [maybe-cycled (conj uncycled cur)]
       (if (get lookup cur)
         maybe-cycled
-        (recur (rest rem)
+        (recur (first rem)
+               (rest rem)
                maybe-cycled
-               (assoc uncycled cur true))))))
+               (assoc lookup cur true))))))
 
 (comment
   (let [rules (input-to-instructions "input/day14test.txt")
         starters (keys rules)]
     (->> starters
          (map #(iterate (partial follow rules) %))
-         (map (partial take 10)))))
+         (map until-cycle)
+         (interleave starters)
+         (partition 2)
+         (map vec)
+         (into {}))))
 
 (defn counts-after-iterations [rules iterations template]
   (let [template-with-iterations (->> template
