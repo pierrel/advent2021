@@ -89,6 +89,38 @@
   (merge-with + {} {"a" 2})
   (update {:a 5} :a + 1))
 
+(defn follow [rules pair]
+  (if-let [following (get rules pair)]
+    (str (first pair)
+         following)))
+
+(comment
+  (follow {"NN" "B"} "NN")
+  (let [rules (input-to-instructions "input/day14test.txt")
+        starters (keys rules)]
+    (map #(take 10 (iterate (partial follow rules)
+                            %))
+         starters)))
+
+(defn until-cycle [col]
+  (loop [rem col
+         uncycled []
+         lookup {}]
+    (let [cur (first rem)
+          maybe-cycled (conj uncycled cur)]
+      (if (get lookup cur)
+        maybe-cycled
+        (recur (rest rem)
+               maybe-cycled
+               (assoc uncycled cur true))))))
+
+(comment
+  (let [rules (input-to-instructions "input/day14test.txt")
+        starters (keys rules)]
+    (->> starters
+         (map #(iterate (partial follow rules) %))
+         (map (partial take 10)))))
+
 (defn counts-after-iterations [rules iterations template]
   (let [template-with-iterations (->> template
                                       seq
@@ -118,14 +150,34 @@
               (recur (rest rem)
                      counts))))))))
 
+
 ;; PART 2
 (comment
   (let [file "input/day14test.txt"
-        iterations 10
         template (->> file
                       input-to-polymer)
-        rules (input-to-instructions file)]
-    (counts-after-iterations rules iterations template)))
+        rules (input-to-instructions file)
+        nn (first (pairs template))
+        to-ten (map #(vector % (counts-after-iterations rules % nn))
+                    (range 0 11))]
+    (->> (interleave to-ten
+                     (rest to-ten))
+         (partition 2)
+         (map (fn [[[l-idx, left] [r-idx, right]]]
+                (vector (str l-idx " -> " r-idx)
+                        (merge-with - left right)))))))
+
+(comment
+  (let [file "input/day14test.txt"
+        iterations 40
+        template (->> file
+                      input-to-polymer)
+        rules (input-to-instructions file)
+        counts (counts-after-iterations rules iterations template)
+        max-mol (bubble-up < counts)
+        min-mol (bubble-up > counts)]
+    (- (second max-mol)
+       (second min-mol))))
 
 
 ;; PART 1
